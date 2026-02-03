@@ -178,8 +178,13 @@ bool Tensor::isContiguous() const {
 }
 
 tensor_t Tensor::permute(const std::vector<size_t> &order) const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    // TO_BE_IMPLEMENTED();
+    auto new_meta = _meta;
+    for(size_t i = 0; i < _meta.shape.size(); i++){
+         new_meta.shape[i] = _meta.shape[order[i]];
+         new_meta.strides[i] = _meta.strides[order[i]];
+    }
+    return std::shared_ptr<Tensor>(new Tensor(new_meta, _storage, _offset));
 }
 
 tensor_t Tensor::view(const std::vector<size_t> &shape) const {
