@@ -184,7 +184,27 @@ tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
 }
 
 void Tensor::load(const void *src_) {
-    TO_BE_IMPLEMENTED();
+    // 设置设备上下文为当前张量所在的设备
+    core::context().setDevice(this->deviceType(), this->deviceId());
+
+    // 获取运行时 API
+    auto api = core::context().runtime().api();
+
+    // 计算数据大小
+    size_t data_size = this->numel() * this->elementSize();
+
+    if (this->deviceType() == LLAISYS_DEVICE_CPU) {
+        // CPU 设备：直接使用 memcpy 复制数据
+        std::memcpy(this->data(), src_, data_size);
+    } else {
+        // 设备（如 GPU）：使用 memcpy_async 从主机到设备拷贝
+        api->memcpy_async(
+            this->data(),
+            src_,
+            data_size,
+            LLAISYS_MEMCPY_H2D,
+            core::context().runtime().stream());
+    }
 }
 
 tensor_t Tensor::contiguous() const {
