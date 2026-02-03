@@ -3,6 +3,7 @@
 #include "../utils.hpp"
 
 #include <cstring>
+#include <functional>
 #include <numeric>
 #include <sstream>
 
@@ -244,11 +245,48 @@ void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?�
 }
 
 tensor_t Tensor::contiguous() const {
+    if (this->isContiguous()) {
+        return std::shared_ptr<Tensor>(new Tensor(_meta, _storage, _offset));
+    }
 
-    if (this->isContiguous()) { return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));}
-
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
-
+    // 创建新的连续 tensor
+    auto new_tensor = Tensor::create(_meta.shape, _meta.dtype, this->deviceType(), this->deviceId());
+    
+    // 设置设备上下文
+    core::context().setDevice(this->deviceType(), this->deviceId());
+    auto api = core::context().runtime().api();
+    
+    size_t elem_size = this->elementSize();
+    // size_t total_elems = this->numel();
+    
+    // 递归复制数据
+    std::function<void(size_t, const std::byte*, std::byte*)> copy_recursive = 
+        [&](size_t dim, const std::byte* src, std::byte* dst) {
+        if (dim == _meta.shape.size()) {
+            return;
+        }
+        
+        if (dim == _meta.shape.size() - 1) {
+            // 最内层维度：整块复制
+            size_t copy_size = _meta.shape[dim] * elem_size;
+            if (this->deviceType() == LLAISYS_DEVICE_CPU) {
+                std::memcpy(dst, src, copy_size);
+            } else {
+                api->memcpy_sync(dst, src, copy_size, LLAISYS_MEMCPY_D2D);
+            }
+        } else {
+            // 递归处理每个子维度
+            for (size_t i = 0; i < _meta.shape[dim]; i++) {
+                copy_recursive(dim + 1, 
+                             src + i * _meta.strides[dim] * elem_size,
+                             dst + i * new_tensor->strides()[dim] * elem_size);
+            }
+        }
+    };
+    
+    copy_recursive(0, this->data(), new_tensor->data());
+    
+    return new_tensor;
 }
 
 tensor_t Tensor::reshape(const std::vector<size_t> &shape) const {
