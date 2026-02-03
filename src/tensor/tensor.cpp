@@ -217,7 +217,7 @@ tensor_t Tensor::view(const std::vector<size_t> &shape) const {
 }
 
 tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
-    // slice 操作只改变 Offset 和 meta
+    // slice 操作只改变 Offset 和 meta，不改变stride
 
     ASSERT(dim < _meta.shape.size(), "Dimension out of range");
     ASSERT(start <= end , "start must be less than or equal to end");
