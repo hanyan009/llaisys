@@ -217,8 +217,19 @@ tensor_t Tensor::view(const std::vector<size_t> &shape) const {
 }
 
 tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage, this->_offset));
+    // slice 操作只改变 Offset 和 meta
+
+    ASSERT(dim < _meta.shape.size(), "Dimension out of range");
+    ASSERT(start <= end , "start must be less than or equal to end");
+    ASSERT(end <= _meta.shape[dim] , "end is out of bounds for this dimension");
+
+    auto meta_new = _meta;
+    meta_new.shape[dim] = end - start;
+
+    // offset 是以字节为单位的。所以变更offset的时候，要乘上this->elementSize()
+    size_t new_offset = this->_offset + static_cast<size_t>(start * _meta.strides[dim]) * this->elementSize();
+    
+    return std::shared_ptr<Tensor>(new Tensor(meta_new, _storage, new_offset));
 }
 
 void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?【答】void* 是通用类型，load时，只需关心起始地址和长度，不用关心具体类型
