@@ -182,13 +182,37 @@ tensor_t Tensor::permute(const std::vector<size_t> &order) const {
 }
 
 tensor_t Tensor::view(const std::vector<size_t> &shape) const {
-    TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    // 【说明】view 不修改原有变量，只是更改meta data。首先检查元素数量，与原始的张量是否为contiguous
+
+    // 首先保证view所要求的元素个数相同
+    size_t numel = std::accumulate(shape.begin(), shape.end(), size_t(1), std::multiplies<size_t>());
+    if (numel != this->numel()) {
+        ASSERT(false, "Tensor view size does not match");
+    }
+
+    // 检查：是否连续，因为计算view之前是要假设输入是contiguous的。
+    if (!this->isContiguous()) { 
+        ASSERT(false, "Tensor must be contiguous before view operation");
+    }
+
+    TensorMeta meta_new = _meta; // 创建新的meta data，便于修改
+
+    meta_new.shape = shape; // shape 赋值为新的
+    // stride 重新计算
+    meta_new.strides.resize(shape.size()); // 调整strides大小与新shape一致
+    meta_new.strides.back() = 1; // 最后一个维度的stride为1，最终当然是优先为contiguous的，
+        
+    // 从后往前计算stride
+    for(int i = static_cast<int>(meta_new.strides.size()) - 2; i >= 0; i--){
+        meta_new.strides[i] = meta_new.strides[i + 1] * meta_new.shape[i + 1];
+    }
+
+    return std::shared_ptr<Tensor>(new Tensor(meta_new, _storage, this->_offset));
 }
 
 tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
     TO_BE_IMPLEMENTED();
-    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+    return std::shared_ptr<Tensor>(new Tensor(_meta, _storage, this->_offset));
 }
 
 void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?【答】void* 是通用类型，load时，只需关心起始地址和长度，不用关心具体类型
