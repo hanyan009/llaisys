@@ -220,8 +220,11 @@ void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?�
 }
 
 tensor_t Tensor::contiguous() const {
-    TO_BE_IMPLEMENTED();
+
+    if (this->isContiguous()) { return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));}
+
     return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
+
 }
 
 tensor_t Tensor::reshape(const std::vector<size_t> &shape) const {
