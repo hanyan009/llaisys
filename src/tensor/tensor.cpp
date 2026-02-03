@@ -9,7 +9,7 @@
 namespace llaisys {
 
 Tensor::Tensor(TensorMeta meta, core::storage_t storage, size_t offset)
-    : _meta(std::move(meta)), _storage(std::move(storage)), _offset(offset) {}
+    : _meta(std::move(meta)), _storage(std::move(storage)), _offset(offset) {} // std::move 移交指针所有权
 
 tensor_t Tensor::create(const std::vector<size_t> &shape,
                         llaisysDataType_t dtype,
@@ -60,7 +60,7 @@ llaisysDataType_t Tensor::dtype() const {
     return _meta.dtype;
 }
 
-llaisysDeviceType_t Tensor::deviceType() const {
+llaisysDeviceType_t Tensor::deviceType() const { // 从storage中拿到devicetype
     return _storage->deviceType();
 }
 
@@ -183,7 +183,7 @@ tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
     return std::shared_ptr<Tensor>(new Tensor(_meta, _storage));
 }
 
-void Tensor::load(const void *src_) {
+void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?【答】void* 是通用类型，load时，只需关心起始地址和长度，不用关心具体类型
     // 设置设备上下文为当前张量所在的设备
     core::context().setDevice(this->deviceType(), this->deviceId());
 
@@ -193,6 +193,7 @@ void Tensor::load(const void *src_) {
     // 计算数据大小
     size_t data_size = this->numel() * this->elementSize();
 
+    // 【注】由于Tensor在内存中是线性存储的，所以有起始和结束地址，就能够完整拷贝。
     if (this->deviceType() == LLAISYS_DEVICE_CPU) {
         // CPU 设备：直接使用 memcpy 复制数据
         std::memcpy(this->data(), src_, data_size);

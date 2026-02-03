@@ -6,7 +6,7 @@
 #include <memory>
 
 namespace llaisys::core {
-class Storage {
+class Storage { // storage
 private:
     std::byte *_memory;
     size_t _size;
