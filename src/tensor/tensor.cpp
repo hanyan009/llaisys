@@ -164,7 +164,15 @@ void Tensor::debug() const {
 }
 
 bool Tensor::isContiguous() const {
-    TO_BE_IMPLEMENTED();
+    // TO_BE_IMPLEMENTED();
+    // stride 第一个维度非 1，绝对非连续
+    if (this->_meta.strides[this->_meta.shape.size() - 1] != 1) return false;
+    // 此外还需满足：当前Stride = 上一个Stride 乘以 上一个维度的大小。也就是刚刚好
+    for (size_t i = 0; i < this->_meta.shape.size() - 1; i++) {
+        if ((size_t)this->_meta.strides[i] != this->_meta.strides[i + 1] * this->_meta.shape[i + 1]) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -186,6 +194,9 @@ tensor_t Tensor::slice(size_t dim, size_t start, size_t end) const {
 void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?【答】void* 是通用类型，load时，只需关心起始地址和长度，不用关心具体类型
     // 设置设备上下文为当前张量所在的设备
     core::context().setDevice(this->deviceType(), this->deviceId());
+    // context()能够实例化一个静态的（thread_local）的context对象，他有static性质和thread_local性质（每个线程独立一份此对象）
+        // context 是线程单实例的。（thread_local）
+    // 【问】为什么要context线程单实例？context是共享的执行环境，
 
     // 获取运行时 API
     auto api = core::context().runtime().api();

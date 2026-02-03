@@ -72,7 +72,7 @@ Runtime &Context::runtime() {
 
 // Global API to get thread-local context.
 Context &context() {
-    thread_local Context thread_context;
+    thread_local Context thread_context; // 【thread_local】 创建了线程唯一的对象，自带static属性，是C++ 11的关键字。
     return thread_context;
 }
 
