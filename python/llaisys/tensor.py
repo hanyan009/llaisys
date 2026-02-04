@@ -19,9 +19,11 @@ class Tensor:
         device: DeviceType = DeviceType.CPU,
         device_id: int = 0,
         tensor: llaisysTensor_t = None,
+        need_destruct: bool = True,
     ):
         if tensor:
             self._tensor = tensor
+            self._need_destruct = need_destruct
         else:
             _ndim = 0 if shape is None else len(shape)
             _shape = None if shape is None else (c_size_t * len(shape))(*shape)
@@ -32,9 +34,10 @@ class Tensor:
                 llaisysDeviceType_t(device),
                 c_int(device_id),
             )
+            self._need_destruct = True
 
     def __del__(self):
-        if hasattr(self, "_tensor") and self._tensor is not None:
+        if hasattr(self, "_tensor") and self._tensor is not None and hasattr(self, "_need_destruct") and self._need_destruct:
             LIB_LLAISYS.tensorDestroy(self._tensor)
             self._tensor = None
 
@@ -95,3 +98,67 @@ class Tensor:
                 self._tensor, c_size_t(dim), c_size_t(start), c_size_t(end)
             )
         )
+
+    @staticmethod
+    def from_numpy(array):
+        import numpy as np
+        
+        # Ensure it's a numpy array
+        if not isinstance(array, np.ndarray):
+            try:
+                array = np.array(array)
+            except:
+                # If conversion fails, try to get raw data
+                array = np.asarray(array)
+        
+        # Ensure contiguous
+        if not array.flags['C_CONTIGUOUS']:
+            array = np.ascontiguousarray(array)
+        
+        dtype_map = {
+            np.float32: DataType.F32,
+            np.float64: DataType.F64,
+            np.int32: DataType.I32,
+            np.int64: DataType.I64,
+            np.uint8: DataType.U8,
+            np.int8: DataType.I8,
+            np.float16: DataType.F16,
+            np.uint16: DataType.BF16,  # bfloat16 is stored as uint16
+        }
+        
+        # Handle bfloat16 - check both dtype name and actual type
+        dtype_str = str(array.dtype)
+        if 'bfloat16' in dtype_str or array.dtype == np.uint16:
+            dtype = DataType.BF16
+        else:
+            dtype = dtype_map.get(array.dtype.type, DataType.F32)
+        
+        tensor = Tensor(shape=array.shape, dtype=dtype, device=DeviceType.CPU)
+        tensor.load(array.ctypes.data_as(c_void_p))
+        return tensor
+    
+    def copy_to(self, dst):
+        import ctypes
+        src_ptr = self.data_ptr()
+        dst_ptr = dst.data_ptr()
+        
+        # Get size in bytes
+        dtype_sizes = {
+            DataType.F32: 4, DataType.F64: 8,
+            DataType.I32: 4, DataType.I64: 8,
+            DataType.U8: 1, DataType.I8: 1,
+            DataType.F16: 2, DataType.BF16: 2,
+        }
+        
+        src_shape = self.shape()
+        dst_shape = dst.shape()
+        assert src_shape == dst_shape, f"Shape mismatch: {src_shape} vs {dst_shape}"
+        
+        numel = 1
+        for s in src_shape:
+            numel *= s
+        
+        element_size = dtype_sizes.get(self.dtype(), 4)
+        size_bytes = numel * element_size
+        
+        ctypes.memmove(dst_ptr, src_ptr, size_bytes)
