@@ -21,20 +21,20 @@ void argmax_impl(std::byte *max_idx,
 
     using IndexT = int64_t;
 
-    auto *idx_ptr = reinterpret_cast<IndexT *>(max_idx);
+    auto *idx_ptr = reinterpret_cast<IndexT *>(max_idx); // 因为函数入口是byte，进行了类型擦除，要转换到目标的类型
     auto *out_val_ptr = reinterpret_cast<ValT *>(max_val);
     auto *in_ptr = reinterpret_cast<const ValT *>(vals);
 
     IndexT best_idx = 0;
     float best_val_f;
 
-    if constexpr (std::is_same_v<ValT, float>) {
+    if constexpr (std::is_same_v<ValT, float>) { // 统一转成float，本来是float就不转。不是就用cast转换
         best_val_f = static_cast<float>(in_ptr[0]);
     } else {
         best_val_f = llaisys::utils::cast<float>(in_ptr[0]);
     }
 
-    for (size_t i = 1; i < numel; ++i) {
+    for (size_t i = 1; i < numel; ++i) { // 最朴素的实现
         float v_f;
         if constexpr (std::is_same_v<ValT, float>) {
             v_f = static_cast<float>(in_ptr[i]);
