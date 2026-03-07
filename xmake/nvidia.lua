@@ -26,7 +26,7 @@ target("llaisys-device-nvidia")
         add_values("cuda.rdc", false)
     end
 
-    add_links("cudart")
+    add_links("cudart", "cublas", "cudnn")
     add_files("../src/device/nvidia/*.cu")
     add_files("../src/device/nvidia/*.cpp")
 
@@ -47,7 +47,7 @@ target("llaisys-ops-nvidia")
         add_values("cuda.rdc", false)
     end
 
-    add_links("cudart")
+    add_links("cudart", "cublas", "cudnn")
     add_files("../src/ops/*/nvidia/*.cu")
     add_files("../src/ops/*/nvidia/*.cpp")
 

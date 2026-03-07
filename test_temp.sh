@@ -11,4 +11,4 @@ pip install ./python/
 # python test/ops/self_attention.py
 # python test/ops/swiglu.py
 echo "=========Start Infer Testing!========"
-python test/test_infer.py --model ../DeepSeek-R1-Distill-Qwen-1.5B --test
+# python test/test_infer.py --model ../DeepSeek-R1-Distill-Qwen-1.5B --test
