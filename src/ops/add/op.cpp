@@ -4,12 +4,9 @@
 #include "../../utils.hpp"
 
 #include "cpu/add_cpu.hpp"
+#include "nvidia/add_nvidia.cuh"
 
-#ifdef ENABLE_NVIDIA_API
-namespace llaisys::ops::nvidia {
-void add(llaisys::tensor_t c, llaisys::tensor_t a, llaisys::tensor_t b);
-}
-#endif
+
 
 namespace llaisys::ops {
 void add(tensor_t c, tensor_t a, tensor_t b) {
