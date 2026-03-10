@@ -18,4 +18,7 @@ private:
     cublasHandle_t cublas_handle_;
     cudnnHandle_t cudnn_handle_;
 };
+
+Resource* get_resource(int device_id);
+
 } // namespace llaisys::device::nvidia

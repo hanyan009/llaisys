@@ -48,6 +48,7 @@ void argmax(tensor_t max_idx, tensor_t max_val, tensor_t vals) {
                            max_idx->dtype(),
                            vals->numel()
         );
+        return;
 #endif
     default:
         EXCEPTION_UNSUPPORTED_DEVICE;

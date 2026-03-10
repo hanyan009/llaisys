@@ -1,4 +1,5 @@
 #pragma once
+#include "../../../core/llaisys_core.hpp"
 
 #ifdef ENABLE_NVIDIA_API
 namespace llaisys::ops::nvidia {

@@ -138,27 +138,9 @@ class Tensor:
         return tensor
     
     def copy_to(self, dst):
-        import ctypes
-        src_ptr = self.data_ptr()
-        dst_ptr = dst.data_ptr()
-        
-        # Get size in bytes
-        dtype_sizes = {
-            DataType.F32: 4, DataType.F64: 8,
-            DataType.I32: 4, DataType.I64: 8,
-            DataType.U8: 1, DataType.I8: 1,
-            DataType.F16: 2, DataType.BF16: 2,
-        }
-        
         src_shape = self.shape()
         dst_shape = dst.shape()
         assert src_shape == dst_shape, f"Shape mismatch: {src_shape} vs {dst_shape}"
         
-        numel = 1
-        for s in src_shape:
-            numel *= s
-        
-        element_size = dtype_sizes.get(self.dtype(), 4)
-        size_bytes = numel * element_size
-        
-        ctypes.memmove(dst_ptr, src_ptr, size_bytes)
+        # Use load API which handles device transfer
+        dst.load(self.data_ptr())

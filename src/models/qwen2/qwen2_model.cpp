@@ -5,6 +5,15 @@
 
 namespace llaisys::models {
 
+static void copy_data(void* dst, const void* src, size_t size, llaisysDeviceType_t device_type, llaisysMemcpyKind_t kind) {
+    if (device_type == LLAISYS_DEVICE_CPU) {
+        std::memcpy(dst, src, size);
+    } else {
+        auto& runtime = llaisys::core::context().runtime();
+        runtime.api()->memcpy_sync(dst, src, size, kind);
+    }
+}
+
 Qwen2Model::Qwen2Model(const Qwen2Meta &meta, llaisysDeviceType_t device_type, int device_id)
     : _meta(meta), _device_type(device_type), _device_id(device_id) {
     // Allocate main weights
@@ -64,8 +73,8 @@ void Qwen2Model::updateKVCache(size_t layer, tensor_t k, tensor_t v) {
         auto k_cache_slice = _kv_cache.k_cache[layer]->slice(0, _kv_cache.seq_len + i, _kv_cache.seq_len + i + 1);
         auto v_cache_slice = _kv_cache.v_cache[layer]->slice(0, _kv_cache.seq_len + i, _kv_cache.seq_len + i + 1);
         
-        std::memcpy(k_cache_slice->data(), k_slice->data(), k_slice->numel() * k_slice->elementSize());
-        std::memcpy(v_cache_slice->data(), v_slice->data(), v_slice->numel() * v_slice->elementSize());
+        copy_data(k_cache_slice->data(), k_slice->data(), k_slice->numel() * k_slice->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
+        copy_data(v_cache_slice->data(), v_slice->data(), v_slice->numel() * v_slice->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
     }
 }
 
@@ -131,19 +140,19 @@ tensor_t Qwen2Model::forward(tensor_t input_ids) {
         auto v_full = Tensor::create({total_seq_len, _meta.nkvh, _meta.dh}, _meta.dtype, _device_type, _device_id);
         
         if (k_cache) {
-            std::memcpy(k_full->data(), k_cache->data(), k_cache->numel() * k_cache->elementSize());
-            std::memcpy(v_full->data(), v_cache->data(), v_cache->numel() * v_cache->elementSize());
+            copy_data(k_full->data(), k_cache->data(), k_cache->numel() * k_cache->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
+            copy_data(v_full->data(), v_cache->data(), v_cache->numel() * v_cache->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
             for (size_t i = 0; i < seq_len; ++i) {
                 auto k_rope_slice = k_rope->slice(0, i, i + 1);
                 auto v_slice = v->slice(0, i, i + 1);
                 auto k_full_slice = k_full->slice(0, _kv_cache.seq_len + i, _kv_cache.seq_len + i + 1);
                 auto v_full_slice = v_full->slice(0, _kv_cache.seq_len + i, _kv_cache.seq_len + i + 1);
-                std::memcpy(k_full_slice->data(), k_rope_slice->data(), k_rope_slice->numel() * k_rope_slice->elementSize());
-                std::memcpy(v_full_slice->data(), v_slice->data(), v_slice->numel() * v_slice->elementSize());
+                copy_data(k_full_slice->data(), k_rope_slice->data(), k_rope_slice->numel() * k_rope_slice->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
+                copy_data(v_full_slice->data(), v_slice->data(), v_slice->numel() * v_slice->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
             }
         } else {
-            std::memcpy(k_full->data(), k_rope->data(), k_rope->numel() * k_rope->elementSize());
-            std::memcpy(v_full->data(), v->data(), v->numel() * v->elementSize());
+            copy_data(k_full->data(), k_rope->data(), k_rope->numel() * k_rope->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
+            copy_data(v_full->data(), v->data(), v->numel() * v->elementSize(), _device_type, LLAISYS_MEMCPY_D2D);
         }
         
         // Self attention
@@ -212,7 +221,7 @@ int64_t Qwen2Model::infer(const std::vector<int64_t> &token_ids) {
     
     // Get result
     std::vector<int64_t> result(1);
-    std::memcpy(result.data(), max_idx->data(), sizeof(int64_t));
+    copy_data(result.data(), max_idx->data(), sizeof(int64_t), _device_type, LLAISYS_MEMCPY_D2H);
     
     return result[0];
 }

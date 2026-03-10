@@ -12,3 +12,4 @@ pip install ./python/
 # python test/ops/swiglu.py
 echo "=========Start Infer Testing!========"
 # python test/test_infer.py --model ../DeepSeek-R1-Distill-Qwen-1.5B --test
+CUDA_VISIBLE_DEVICES=3 python test/test_infer.py --model ../DeepSeek-R1-Distill-Qwen-1.5B --test --device nvidia

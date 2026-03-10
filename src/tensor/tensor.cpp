@@ -250,13 +250,12 @@ void Tensor::load(const void *src_) { // 【问】为什么load使用void &src?�
         // CPU 设备：直接使用 memcpy 复制数据
         std::memcpy(this->data(), src_, data_size);
     } else {
-        // 设备（如 GPU）：使用 memcpy_async 从主机到设备拷贝
-        api->memcpy_async(
+        // 设备（如 GPU）：使用 memcpy_sync 从主机到设备拷贝
+        api->memcpy_sync(
             this->data(),
             src_,
             data_size,
-            LLAISYS_MEMCPY_H2D,
-            core::context().runtime().stream());
+            LLAISYS_MEMCPY_H2D);
     }
 }
 

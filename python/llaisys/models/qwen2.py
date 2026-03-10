@@ -270,6 +270,28 @@ class Qwen2:
             steps += 1
         
         return output_ids
+
+    def generate_stream(
+        self,
+        inputs: Sequence[int],
+        max_new_tokens: int = None,
+        top_k: int = 1,
+        top_p: float = 0.8,
+        temperature: float = 0.8,
+    ):
+        # First token generation with full prompt
+        output_ids = list(inputs)
+        token_array = (c_int64 * len(output_ids))(*output_ids)
+        next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, len(output_ids))
+        yield next_token
+        
+        # Generate remaining tokens one by one
+        steps = 0
+        while (max_new_tokens is None or steps < max_new_tokens - 1) and next_token != self._end_token:
+            token_array = (c_int64 * 1)(next_token)
+            next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, 1)
+            yield next_token
+            steps += 1
     
     def __del__(self):
         if hasattr(self, '_model'):

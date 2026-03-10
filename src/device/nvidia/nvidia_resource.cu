@@ -1,6 +1,9 @@
 #include "nvidia_resource.cuh"
 #include <cstdio>
 #include <cstdlib>
+#include <mutex>
+#include <unordered_map>
+#include <memory>
 
 #define CHECK_CUDA(call) \
     do { \
@@ -51,6 +54,19 @@ Resource::~Resource() {
     if (cudnn_err != CUDNN_STATUS_SUCCESS) {
         fprintf(stderr, "CUDNN destroy error: %s\n", cudnnGetErrorString(cudnn_err));
     }
+}
+
+static std::mutex g_resource_mutex;
+static std::unordered_map<int, std::unique_ptr<Resource>> g_resources;
+
+Resource* get_resource(int device_id) {
+    std::lock_guard<std::mutex> lock(g_resource_mutex);
+    auto it = g_resources.find(device_id);
+    if (it == g_resources.end()) {
+        g_resources[device_id] = std::make_unique<Resource>(device_id);
+        return g_resources[device_id].get();
+    }
+    return it->second.get();
 }
 
 } // namespace llaisys::device::nvidia
