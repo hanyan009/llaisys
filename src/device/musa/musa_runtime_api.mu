@@ -21,6 +21,7 @@ int getDeviceCount() {
     int count = 0;
     musaError_t error = musaGetDeviceCount(&count);
     if (error != musaSuccess) {
+        printf("musaGetDeviceCount failed: %s\n", musaGetErrorString(error));
         return 0;
     }
     return count;

@@ -5,7 +5,7 @@
 
 #include "cpu/add_cpu.hpp"
 #include "nvidia/add_nvidia.cuh"
-
+#include "musa/add_musa.muh"
 
 
 namespace llaisys::ops {
@@ -29,6 +29,10 @@ void add(tensor_t c, tensor_t a, tensor_t b) {
 #ifdef ENABLE_NVIDIA_API
     case LLAISYS_DEVICE_NVIDIA:
         return llaisys::ops::nvidia::add(c, a, b);
+#endif
+#ifdef ENABLE_MUSA_API
+    case LLAISYS_DEVICE_MUSA:
+        return llaisys::ops::musa::add(c, a, b);
 #endif
     default:
         EXCEPTION_UNSUPPORTED_DEVICE;

@@ -5,6 +5,7 @@
 
 #include "cpu/self_attention_cpu.hpp"
 #include "nvidia/self_attention_nvidia.cuh"
+#include "musa/self_attention_musa.muh"
 
 namespace llaisys::ops {
 void self_attention(tensor_t attn_val, tensor_t q, tensor_t k, tensor_t v, float scale) {
@@ -47,6 +48,10 @@ void self_attention(tensor_t attn_val, tensor_t q, tensor_t k, tensor_t v, float
 #ifdef ENABLE_NVIDIA_API
     case LLAISYS_DEVICE_NVIDIA:
         return llaisys::ops::nvidia::self_attention(attn_val, q, k, v, scale);
+#endif
+#ifdef ENABLE_MUSA_API
+    case LLAISYS_DEVICE_MUSA:
+        return llaisys::ops::musa::self_attention(attn_val, q, k, v, scale);
 #endif
     default:
         EXCEPTION_UNSUPPORTED_DEVICE;

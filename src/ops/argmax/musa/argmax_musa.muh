@@ -1,0 +1,13 @@
+#pragma once
+#include "../../../core/llaisys_core.hpp"
+
+#ifdef ENABLE_MUSA_API
+namespace llaisys::ops::musa {
+void argmax(std::byte *max_idx,
+            std::byte *max_val,
+            const std::byte *vals,
+            llaisysDataType_t val_type,
+            llaisysDataType_t idx_type,
+            size_t numel);
+}
+#endif

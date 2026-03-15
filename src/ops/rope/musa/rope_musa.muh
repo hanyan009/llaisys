@@ -1,0 +1,8 @@
+#pragma once
+#include "../../../tensor/tensor.hpp"
+
+#ifdef ENABLE_MUSA_API
+namespace llaisys::ops::musa {
+void rope(tensor_t out, tensor_t in, tensor_t pos_ids, float theta);
+}
+#endif

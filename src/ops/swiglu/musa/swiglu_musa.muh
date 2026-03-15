@@ -1,0 +1,8 @@
+#pragma once
+#include "../../../tensor/tensor.hpp"
+
+#ifdef ENABLE_MUSA_API
+namespace llaisys::ops::musa {
+void swiglu(tensor_t out, tensor_t gate, tensor_t up);
+}
+#endif

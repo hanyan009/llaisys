@@ -1,0 +1,9 @@
+#pragma once
+
+#ifdef ENABLE_MUSA_API
+#include "../../../tensor/tensor.hpp"
+
+namespace llaisys::ops::musa {
+void linear(tensor_t out, tensor_t in, tensor_t weight, tensor_t bias);
+}
+#endif
