@@ -4,6 +4,7 @@ import argparse
 from typing import List, Optional, Union
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
 import time
@@ -27,6 +28,13 @@ tokenizer = None
 server_args = None
 
 app = FastAPI(title="Llaisys API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ChatMessage(BaseModel):
     role: str
@@ -38,6 +46,8 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 128
     temperature: Optional[float] = 0.8
     top_p: Optional[float] = 0.8
+    top_k: Optional[int] = 50
+    argmax: Optional[bool] = False
     stream: Optional[bool] = False
 
 def llaisys_device(name):
@@ -68,12 +78,20 @@ def load_model():
     print("Model loaded successfully.")
 
 def stream_generator(input_ids, request):
+    temp = request.temperature
+    top_p = request.top_p
+    top_k = request.top_k
+    if request.argmax:
+        temp = 0.0
+        top_p = 1.0
+        top_k = 1
+
     generator = model.generate_stream(
         input_ids,
         max_new_tokens=request.max_tokens,
-        top_p=request.top_p,
-        top_k=50,
-        temperature=request.temperature
+        top_p=top_p,
+        top_k=top_k,
+        temperature=temp
     )
     
     generated_ids = []
@@ -140,12 +158,20 @@ async def chat_completions(request: ChatCompletionRequest):
         )
     else:
         # Non-streaming
+        temp = request.temperature
+        top_p = request.top_p
+        top_k = request.top_k
+        if request.argmax:
+            temp = 0.0
+            top_p = 1.0
+            top_k = 1
+
         output_ids = model.generate(
             input_ids,
             max_new_tokens=request.max_tokens,
-            top_p=request.top_p,
-            top_k=50, 
-            temperature=request.temperature
+            top_p=top_p,
+            top_k=top_k, 
+            temperature=temp
         )
         # generated ids are appended to input_ids (based on qwen2.py implementation)
         # Wait, qwen2.py generate returns full sequence?
