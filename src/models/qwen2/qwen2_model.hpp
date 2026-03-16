@@ -57,7 +57,7 @@ public:
     ~Qwen2Model() = default;
 
     Qwen2Weights &weights() { return _weights; }
-    int64_t infer(const std::vector<int64_t> &token_ids);
+    int64_t infer(const std::vector<int64_t> &token_ids, float temperature = 0.8f, float top_p = 0.8f, int top_k = 1);
 
 private:
     tensor_t forward(tensor_t input_ids);

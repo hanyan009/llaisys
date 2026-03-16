@@ -38,8 +38,9 @@ class Qwen2:
         
         print("[Qwen2.__init__] Step 3: Creating C++ model...")
         # Create model
+        from ctypes import byref
         device_id = c_int(0)
-        self._model = LIB_LLAISYS.llaisysQwen2ModelCreate(meta, device, device_id, 1)
+        self._model = LIB_LLAISYS.llaisysQwen2ModelCreate(meta, device, byref(device_id), 1)
         print(f"[Qwen2.__init__] Model created: {self._model}")
         
         print("[Qwen2.__init__] Step 4: Getting weights pointer...")
@@ -258,14 +259,14 @@ class Qwen2:
         
         # First token generation with full prompt
         token_array = (c_int64 * len(output_ids))(*output_ids)
-        next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, len(output_ids))
+        next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, len(output_ids), temperature, top_p, top_k)
         output_ids.append(next_token)
         
         # Generate remaining tokens one by one
         steps = 0
         while (max_new_tokens is None or steps < max_new_tokens - 1) and next_token != self._end_token:
             token_array = (c_int64 * 1)(next_token)
-            next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, 1)
+            next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, 1, temperature, top_p, top_k)
             output_ids.append(next_token)
             steps += 1
         
@@ -282,14 +283,14 @@ class Qwen2:
         # First token generation with full prompt
         output_ids = list(inputs)
         token_array = (c_int64 * len(output_ids))(*output_ids)
-        next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, len(output_ids))
+        next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, len(output_ids), temperature, top_p, top_k)
         yield next_token
         
         # Generate remaining tokens one by one
         steps = 0
         while (max_new_tokens is None or steps < max_new_tokens - 1) and next_token != self._end_token:
             token_array = (c_int64 * 1)(next_token)
-            next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, 1)
+            next_token = LIB_LLAISYS.llaisysQwen2ModelInfer(self._model, token_array, 1, temperature, top_p, top_k)
             yield next_token
             steps += 1
     

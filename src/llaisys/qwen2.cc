@@ -98,9 +98,9 @@ struct LlaisysQwen2Weights *llaisysQwen2ModelWeights(struct LlaisysQwen2Model *m
     return c_weights;
 }
 
-int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model *model, int64_t *token_ids, size_t ntoken) {
+int64_t llaisysQwen2ModelInfer(struct LlaisysQwen2Model *model, int64_t *token_ids, size_t ntoken, float temperature, float top_p, int top_k) {
     if (!model || !model->model) return -1;
     
     std::vector<int64_t> tokens(token_ids, token_ids + ntoken);
-    return model->model->infer(tokens);
+    return model->model->infer(tokens, temperature, top_p, top_k);
 }

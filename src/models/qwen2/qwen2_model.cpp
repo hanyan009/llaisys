@@ -2,6 +2,9 @@
 #include "../../utils.hpp"
 #include <cstring>
 #include <cmath>
+#include <random>
+#include <algorithm>
+#include <numeric>
 
 namespace llaisys::models {
 
@@ -204,7 +207,7 @@ tensor_t Qwen2Model::forward(tensor_t input_ids) {
     return logits;
 }
 
-int64_t Qwen2Model::infer(const std::vector<int64_t> &token_ids) {
+int64_t Qwen2Model::infer(const std::vector<int64_t> &token_ids, float temperature, float top_p, int top_k) {
     auto input_ids = Tensor::create({token_ids.size()}, LLAISYS_DTYPE_I64, _device_type, _device_id);
     input_ids->load(token_ids.data());
     
@@ -214,16 +217,82 @@ int64_t Qwen2Model::infer(const std::vector<int64_t> &token_ids) {
     auto last_logits = logits->slice(0, logits->shape()[0] - 1, logits->shape()[0]);
     last_logits = last_logits->view({_meta.voc});
     
-    // Argmax
-    auto max_idx = Tensor::create({1}, LLAISYS_DTYPE_I64, _device_type, _device_id);
-    auto max_val = Tensor::create({1}, _meta.dtype, _device_type, _device_id);
-    ops::argmax(max_idx, max_val, last_logits);
+    std::vector<float> logits_f32(_meta.voc);
+    if (_meta.dtype == LLAISYS_DTYPE_F32) {
+        copy_data(logits_f32.data(), last_logits->data(), _meta.voc * sizeof(float), _device_type, LLAISYS_MEMCPY_D2H);
+    } else {
+        // Implement dtype conversion logic here if needed
+        return -1;
+    }
+
+    if (temperature <= 0.0f) {
+        // Greedy search
+        auto max_it = std::max_element(logits_f32.begin(), logits_f32.end());
+        return std::distance(logits_f32.begin(), max_it);
+    }
+
+    // Temperature scaling
+    for (float& val : logits_f32) {
+        val /= temperature;
+    }
+
+    // Softmax
+    float max_logit = *std::max_element(logits_f32.begin(), logits_f32.end());
+    float sum_exp = 0.0f;
+    for (float& val : logits_f32) {
+        val = std::exp(val - max_logit);
+        sum_exp += val;
+    }
+    for (float& val : logits_f32) {
+        val /= sum_exp;
+    }
+
+    // Top-k filtering
+    std::vector<std::pair<float, int>> probs;
+    probs.reserve(_meta.voc);
+    for (size_t i = 0; i < _meta.voc; ++i) {
+        probs.emplace_back(logits_f32[i], i);
+    }
+
+    if (top_k > 0 && top_k < (int)_meta.voc) {
+        std::partial_sort(probs.begin(), probs.begin() + top_k, probs.end(),
+                          [](const auto& a, const auto& b) { return a.first > b.first; });
+        probs.resize(top_k);
+    } else {
+        std::sort(probs.begin(), probs.end(),
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
+    }
+
+    // Top-p filtering
+    float cumulative_prob = 0.0f;
+    size_t top_p_idx = probs.size();
+    for (size_t i = 0; i < probs.size(); ++i) {
+        cumulative_prob += probs[i].first;
+        if (cumulative_prob >= top_p) {
+            top_p_idx = i + 1;
+            break;
+        }
+    }
+    probs.resize(top_p_idx);
+
+    // Re-normalize after top-p
+    sum_exp = 0.0f;
+    for (const auto& p : probs) {
+        sum_exp += p.first;
+    }
     
-    // Get result
-    std::vector<int64_t> result(1);
-    copy_data(result.data(), max_idx->data(), sizeof(int64_t), _device_type, LLAISYS_MEMCPY_D2H);
+    std::vector<float> final_probs;
+    final_probs.reserve(probs.size());
+    for (const auto& p : probs) {
+        final_probs.push_back(p.first / sum_exp);
+    }
+
+    // Sample
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::discrete_distribution<int> dist(final_probs.begin(), final_probs.end());
     
-    return result[0];
+    return probs[dist(gen)].second;
 }
 
 } // namespace llaisys::models
